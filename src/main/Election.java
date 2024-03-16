@@ -1,7 +1,13 @@
 package main;
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.OutputStreamWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.function.Function;
 
 import data_structures.ArrayList;
 import interfaces.List;
@@ -13,8 +19,7 @@ public class Election {
 	private List<Candidate>winning=new ArrayList<>();
 	private List<Ballot>ballots = new ArrayList<>();
 	private List<String>eliminatedCandidates = new ArrayList<>();
-	private List<String>ranked=new ArrayList<>();
-	//private List<List<Ballot>> n= new ArrayList<>();
+	private List<Integer>eliminatedAmount = new ArrayList<>();
 	private int ballotAmount=0;
 	private int validBallotAmount=0;
 	private int invalidBallotAmount=0;
@@ -22,13 +27,10 @@ public class Election {
 	String Winner=null;
 	private int max=0;
 	private int min=ballots.size();
-	//PREGUNTA SI PUEDES CAMBIAR EL ORDEN DE LAS FUNCIONES
 	
 	public Election() {
 		String candidatesFilePath ="inputFiles/candidates.csv";
 		String ballotsFilePath ="inputFiles/ballots.csv";
-		
-		//check este try vs el otro
 		
 		try (BufferedReader candidateRead = new BufferedReader(new FileReader(candidatesFilePath));
 				BufferedReader ballotReader = new BufferedReader (new FileReader(ballotsFilePath))) {
@@ -50,6 +52,8 @@ public class Election {
 				
 			}
 		}catch(IOException error) {System.err.println(error.getMessage());}
+		
+
 	}
 	/* Constructor that receives the name of the candidate and ballot files and applies
 	the election logic. Note: The files should be found in the input folder. */
@@ -57,9 +61,8 @@ public class Election {
 	public Election(String candidates_filename, String ballot_filename) {
 		String candidatesFilePath ="inputFiles/"+candidates_filename;
 		String ballotsFilePath ="inputFiles/"+ballot_filename;
-		try {
-			BufferedReader candidateRead = new BufferedReader(new FileReader( candidatesFilePath));
-			BufferedReader ballotReader = new BufferedReader (new FileReader(ballotsFilePath));
+		try (BufferedReader candidateRead = new BufferedReader(new FileReader( candidatesFilePath));
+				BufferedReader ballotReader = new BufferedReader (new FileReader(ballotsFilePath))) {
 			String candidateLine=candidateRead.readLine();
 			while(candidateLine!=null) {
 				Candidate candidate = new Candidate(candidateLine);
@@ -78,67 +81,63 @@ public class Election {
 			}
 		}catch(IOException error) {System.err.println(error.getMessage());}
 	}
-	/*public int getMax(List<Integer> votes){
-		int max=0;
-		for(int i=0;i<votes.size();i++) {
-			if(votes.get(i)>max) {max=votes.get(i);}
-		}
-		return max;
-	}
-	public int getMin(List<Integer> votes) {
-		int min=candidates.size()+1;
-		for(int i=0;i<votes.size();i++) {
-			if(votes.get(i)<min) {min=votes.get(i);}
-		}
-		return min;
-	}*/
-/*	public void MaxMin(List<Integer>votes) {
-		max=0;
-		min=candidates.size()+1;
-		for(int i=0;i<votes.size();i++) {
-			if(votes.get(i)<this.min) {this.min=votes.get(i);}
-			if(votes.get(i)>this.max) {this.max=votes.get(i);winning.clear();winning.add(candidates.get(i));}
-			else if(votes.get(i)==this.max) {winning.add(candidates.get(i));}
-		}
-	}*/
 	
+
 	// returns the name of the winner of the election
 	// FALTA: que hacer si dos tienen la misma cantidad de 1
 	//que hacer con empate full	public void MaxMin(List<Integer>votes)
-	public boolean MaxandMin(List<List<Ballot>> counter,int i) {
+	public void MaxandMin(List<List<Ballot>> counter,int i) {
 		this.max=0;
 		this.min=ballots.size();
 		for(int g=0;g<counter.size();g++) {
 			if(counter.get(g).size()<this.min && candidates.get(g).isActive()) {
 				this.min=counter.get(g).size();
+				//loseTie.clear();
+				//loseTie.add(g+1);
 			}
-			
-			else if(counter.get(g).size()>this.max) {
+		/*	else if(counter.get(g).size()==this.min && candidates.get(g).isActive()&&g>0) {
+				loseTie.add(g+1);
+			}
+			else if(counter.get(g).size()==this.max && candidates.get(g).isActive()) {
+				winTie.add(g+1);
+			}*/
+			else if(counter.get(g).size()>this.max && candidates.get(g).isActive()) {
 				this.max=counter.get(g).size();
+				//winTie.clear();
+				//winTie.add(g+1);
 				if(this.max>ballots.size()/2) {
 					this.Winner=candidates.get(g).getName();
-					return true;
+					//return true;
 				}
 				
 			}
+			/*System.out.print("loseTie: ");
+			for(int l:loseTie) {System.out.println(l+", ");}
+			System.out.print("winTie: ");
+			for(int l:winTie) {System.out.println(l);}*/
 			//System.out.println(eliminatedCandidates.size());
 			//else if(counter.get(i).size()==min)
 		}
-		return false;
+		//return false;
 	}
 	public String getWinner() {
 
 		List<List<Ballot>> counter=new ArrayList<>(candidates.size());
+		List<Candidate> loseTie=new ArrayList<>();
+		List<Integer> tieAmount=new ArrayList<>();
+		List<Ballot> skipOver=new ArrayList<>();
+		
 		//List<Ballot> StandIn=new ArrayList<>();
 //		counter:
 //		0|->b1,b5,b6,b3
 //		1|->b4
 //		2|->b2
+
 		for (int i=0;i<candidates.size();i++) {
 			counter.add(i,new ArrayList<Ballot>());
 		}
 		for (int i=0;i<ballots.size();i++) {
-			int c=ballots.get(i).getCandidateByRank(1)-eliminatedCandidates.size();
+			int c=ballots.get(i).getCandidateByRank(1);                                                                                                  
 			counter.get(c-1).add(ballots.get(i));
 			//System.out.println("b"+c+" "+counter.get(c-1).size());
 			/*StandIn=counter.get(c-1);
@@ -155,14 +154,22 @@ public class Election {
 		for (int i=0;i<ballots.size();i++) {
 
 			for(int g=0;g<counter.size();g++) {
-				
+
 				if(counter.get(g).size()<this.min && candidates.get(g).isActive()) {
 					this.min=counter.get(g).size();
+					loseTie.clear();
+					loseTie.add(candidates.get(g));
+					tieAmount.clear();
+					tieAmount.add(0);
 				}
-				
-				else if(counter.get(g).size()>this.max) {
+				else if(counter.get(g).size()==this.min && candidates.get(g).isActive()&&g>0) {
+					loseTie.add(candidates.get(g));
+					tieAmount.add(0);
+				}
+				else if(counter.get(g).size()>this.max && candidates.get(g).isActive()) {
 					this.max=counter.get(g).size();
-					
+					//winTie.clear();
+					//winTie.add(g+1);
 					if(this.max>ballots.size()/2) {
 						Winner=candidates.get(g).getName();
 					//	System.out.println("max"+max+" winner"+Winner);
@@ -188,6 +195,31 @@ public class Election {
 				//falta verificar si el candidato eliminado tiene empate
 				
 				if(counter.get(d-1).size()<=this.min && candidates.get(c-1).isActive()) {
+					int y=2;
+					while(loseTie.size()==2 && loseTie.contains(candidates.get(c-1))&&y<=candidates.size()) {
+						for(Ballot b: ballots) {
+							if(b.getCandidateByRank(y)==loseTie.get(0).getId()) {
+								tieAmount.add(0,tieAmount.get(0)+1);
+							}
+							if(b.getCandidateByRank(y)==loseTie.get(1).getId()) {
+								tieAmount.add(1,tieAmount.get(1)+1);
+							}
+						}
+						if(tieAmount.get(0)==tieAmount.get(1)) {
+							y++;
+							continue;
+						}else {
+							int small=tieAmount.get(0);
+							if(tieAmount.get(1)<small) {loseTie.remove(0);}
+							else {loseTie.remove(1);}
+							break;
+						}
+					}
+					if(loseTie.size()==1 && !loseTie.contains(candidates.get(c-1))) {
+						int a=counter.get(loseTie.get(0).getId()-1).size();
+						this.eliminatedCandidates.add(loseTie.get(0).getName()+"-"+Integer.toString(a));
+					}
+
 				//	System.out.println("eliminated"+candidates.get(c-1).getName());
 					int a=counter.get(d-1).size();
 					while(!counter.get(d-1).isEmpty()) {
@@ -200,6 +232,7 @@ public class Election {
 						System.out.println(a+" size= "+m.size());
 						int secondPlace=t.getCandidateByRank(2);*/
 						int secondPlace=counter.get(d-1).get(0).getCandidateByRank(2);
+						this.eliminatedAmount.add(counter.get(d-1).size());
 						while(!candidates.get(secondPlace-1).isActive()) {
 							//System.out.println(candidates.get(counter.get(d-1).get(0).getCandidateByRank(n)-1).getName()+candidates.get(counter.get(d-1).get(0).getCandidateByRank(n)-1).isActive());
 							secondPlace=counter.get(d-1).get(0).getCandidateByRank(n);
@@ -221,12 +254,17 @@ public class Election {
 					//counter.remove(counter.get(d-1));
 					//add to eliminated list
 					//System.out.println("3");
-					this.eliminatedCandidates.add(candidates.get(c-1).getName()+"-"+Integer.toString(a));
+					if(!this.eliminatedCandidates.contains(candidates.get(c-1).getName())) {
+						this.eliminatedCandidates.add(candidates.get(c-1).getName()+"-"+Integer.toString(a));
+					}
+					
+					
 					//System.out.println(" c"+eliminatedCandidates.get(eliminatedCandidates.size()-1));
 					
 					//eliminate candidate
 					//for(Candidate j:candidates) {System.out.println()
 					ballots.get(i).eliminate(c);
+					
 					MaxandMin(counter,i);
 					if(this.Winner!=null) {/*System.out.println("winner" + this.Winner);*/return Winner;}
 					break;
@@ -284,7 +322,18 @@ public class Election {
 //		}
 //		return Winner;
 		//System.out.println(" win" +Winner);
-		return "no Winner";
+		if(eliminatedCandidates.size()<candidates.size()) {
+			for(Candidate c:candidates) {
+				if(c.isActive()) {
+					Winner=c.getName();
+					break;
+				}
+			}
+				
+		}else {
+			Winner=eliminatedCandidates.get(eliminatedCandidates.size()-1);
+		}
+		return Winner;
 	}
 
 	//List<Integer> votes=new ArrayList<Integer>();
@@ -458,4 +507,44 @@ public class Election {
 		return  this.eliminatedCandidates;
 		//return null;
 	}
+	public void printCandidates(Function<Candidate, String> func) {
+		for(Candidate candidate:candidates) {
+			System.out.println(func.apply(candidate));
+		}
+	}
+	public int countBallots(Function<Ballot, Boolean> func) {
+		int n=0;
+		//System.out.println(ballots.get(0));
+		for(Ballot b:ballots) {
+			//System.out.println(b.getRankByCandidate(1));
+			if (func.apply(b)) {n++;}
+			
+		}
+		System.out.println(n);
+		return n;
+	}
+	public void WriteFileResults() {
+		String winner=getWinner();
+		String outputTxt="outputFiles/"+"expected_output_"+winner.toLowerCase().replace(" ", "_")+max+".txt";
+		//String add="Number of ballots: "+String.valueOf(this.ballotAmount);
+		//BufferedWriter output;
+		try(BufferedWriter output=new BufferedWriter(new FileWriter(outputTxt))) {
+			
+			output.write("Number of ballots: "+String.valueOf(this.ballotAmount)+"\n");
+			output.write("Number of blanc ballots: "+String.valueOf(this.blancBallotAmount)+"\n");
+			output.write("Number of invalid ballots: "+String.valueOf(this.invalidBallotAmount)+"\n");
+			for(int i=0;i<eliminatedCandidates.size();i++) {
+				String w="Round "+String.valueOf(i+1)+": "+eliminatedCandidates.get(i);
+				output.write(w+" was eliminated with "+eliminatedAmount.get(i)+" #1's"+"\n");
+			}
+			output.write("Winner: "+winner+" wins with "+max+" #1's"+"\n");
+			output.close();
+		
+		
+		} catch (IOException e) {
+			System.err.println("Error writing output results: "+ e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
 }
