@@ -27,13 +27,18 @@ public class Ballot {
 			
 			//split again by id and rank 
 			String[] CanRank=tempArray[s].split(":");
+			
+			//if item had a :
 			if(CanRank.length>=2) {
+				
 				//use id to add running candidates to candidates2
 				int id = Integer.valueOf(CanRank[0]);
 				candidates2.add(candidates.get(id-1));
 				
 				//use indexing to add their rank to ranks
 				ranks.add(Integer.valueOf(CanRank[1]));
+				
+			//if item didnt have a : and wasnt ballot num it is addes to ranks and deemed invalid in ballotType()
 			}else {
 				ranks.add(Integer.valueOf(CanRank[0]));
 			}
@@ -54,6 +59,8 @@ public class Ballot {
 	
 	//Returns the rank for that candidate, if no rank is available return -1
 	public int getRankByCandidate(int candidateID) {
+		
+		//iterates trough candidates to find position
 		for(int i=0;i<candidates2.size();i++) {
 			if(candidates2.get(i).getId()==candidateID) {
 				return i+1;
@@ -65,6 +72,7 @@ public class Ballot {
 	
 	//Returns the candidate with that rank, if no candidate is available return -1.
 	public int getCandidateByRank(int rank) {
+		//if rank is valid, return id
 		if(rank<candidates2.size()+1 && rank>0) {
 			return candidates2.get(rank-1).getId();
 		}
@@ -76,6 +84,7 @@ public class Ballot {
 	public boolean eliminate(int candidateId) {
 		int rank=getRankByCandidate(candidateId);
 		
+		//if candidate exists, eliminate it 
 		if(rank!=-1) {
 			candidates2.get(rank-1).setActive(false);
 			candidates2.remove(rank-1);
@@ -90,10 +99,15 @@ public class Ballot {
 	public int getBallotType() {
 		//if size==0, ballot is blanc
 		if(candidates2.size()>0) {
+			
+			//all ballot items except for ballot num must be id:rank
+			//if its is just id ore just rank, ballot is invalid
 			if(ranks.size()!=candidates2.size()) {return 2;}
+			
 			for(int i = 0;i<ranks.size();i++) {
 				
-				////checks that all ranks are not skipped and 
+				//checks that all ranks are not skipped and, since i beggins at 0, 
+				//checks that No candidate has a ranking vote greater than the number of candidates
 				if((ranks.get(i)!=i+1)) {return 2;} 
 				for(int g=0;g<candidates2.size();g++) {
 					if(candidates2.get(i).equals(candidates2.get(g))&&i!=g) {return 2;}
